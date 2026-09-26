@@ -1,0 +1,9 @@
+.DS_Store
+work/
+outputs/
+foods.html
+*.xlsx
+*.csv
+src/questions.js
+src/memo-questions.js
+src/gemini-questions.js
