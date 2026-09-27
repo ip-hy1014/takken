@@ -538,7 +538,9 @@ function play() {
     </div></main>`;
   }
   const shown = session.showing;
-  const pack = shown || deal(q);
+  const isCard = Boolean(q.ans);
+  const revealed = isCard && (shown || session.revealed === q.id);
+  const pack = isCard ? null : (shown || deal(q));
   const card = cardOf(q.id);
   const kind = shown?.kind || (
     session.queue[0] === q.id && card ? 'やり直し' : card ? '復習' : '新しい問題'
@@ -547,10 +549,24 @@ function play() {
   const heat = Math.min(100, session.combo * 12);
   const ret = card ? Math.round(retentionOf(card) * 100) : null;
   const remain = Math.max(0, target - state.daily.answered);
-  const answers = pack.a.map((a, i) => {
-    const cls = shown ? (i === pack.correct ? 'correct' : (i === shown.picked && !shown.ok ? 'wrong' : '')) : '';
-    return `<button type="button" data-i="${i}" ${shown ? 'disabled' : ''} class="${cls}"><strong>${i + 1}</strong>${esc(a)}</button>`;
-  }).join('');
+  let answers;
+  if (isCard) {
+    answers = !revealed
+      ? `<button type="button" class="primary fat" id="reveal-q">答えを見る</button>`
+      : `<div class="card-answer">
+          <b>${esc(q.ans)}</b>
+          <p>${esc(q.why)}</p>
+        </div>
+        ${shown ? '' : `<div class="self-grade">
+          <button type="button" data-i="0" class="grade-ok"><strong>1</strong>覚えていた</button>
+          <button type="button" data-i="1" class="grade-ng"><strong>2</strong>忘れていた</button>
+        </div>`}`;
+  } else {
+    answers = pack.a.map((a, i) => {
+      const cls = shown ? (i === pack.correct ? 'correct' : (i === shown.picked && !shown.ok ? 'wrong' : '')) : '';
+      return `<button type="button" data-i="${i}" ${shown ? 'disabled' : ''} class="${cls}"><strong>${i + 1}</strong>${esc(a)}</button>`;
+    }).join('');
+  }
 
   let feedback = '';
   if (shown) {
@@ -564,10 +580,10 @@ function play() {
     feedback = `
       <div class="feedback ${shown.ok ? 'good' : 'bad'}">
         <div class="fb-top">
-          <b>${shown.ok ? '正解' : '不正解'} · +${shown.gain} XP${overtime() && shown.ok ? '（2倍）' : ''}</b>
+          <b>${isCard ? (shown.ok ? '覚えていた' : '忘れていた') : (shown.ok ? '正解' : '不正解')} · +${shown.gain} XP${overtime() && shown.ok ? '（2倍）' : ''}</b>
           ${extra}
         </div>
-        <p>${esc(q.why)}</p>
+        ${isCard ? '' : `<p>${esc(q.why)}</p>`}
         <p class="next-due">${intervalCopy(cardOf(q.id), shown.ok)}</p>
         <p class="score-delta">${scoreLine}</p>
         <button type="button" class="primary fat" id="next-q">${nextLabel}</button>
@@ -587,9 +603,11 @@ function play() {
         </div>
       </div>
       <h1>${esc(q.q)}</h1>
-      <div id="answers" class="answers">${answers}</div>
+      <div id="answers" class="${isCard ? 'card-wrap' : 'answers'}">${answers}</div>
       <div id="feedback">${feedback}</div>
-      <p class="hint">キーボードの1〜4でも選べます。Enterで次へ進みます。選択肢の並びは毎回変わります。</p>
+      <p class="hint">${isCard
+        ? '答えを思い浮かべてから開きます。Enterで答えを表示、1で覚えていた、2で忘れていた。'
+        : 'キーボードの1〜4でも選べます。Enterで次へ進みます。選択肢の並びは毎回変わります。'}</p>
     </main>`;
 }
 
@@ -605,10 +623,18 @@ function intervalCopy(card, ok) {
 function answer(i) {
   const q = currentQuestion();
   if (!q || session.showing) return;
+  if (q.ans) {
+    if (session.revealed !== q.id) return;
+    grade(q, i === 0, { picked: i });
+    return;
+  }
+  const pack = deal(q);
+  grade(q, i === pack.correct, { ...pack, picked: i });
+}
+
+function grade(q, ok, pack) {
   session.currentId = q.id;
   session.advanceAt = Date.now() + 700;
-  const pack = deal(q);
-  const ok = i === pack.correct;
   const wasNew = !cardOf(q.id);
   const kind = session.queue[0] === q.id && !wasNew ? 'やり直し' : wasNew ? '新しい問題' : '復習';
   const prevScore = predictedScore();
@@ -637,7 +663,7 @@ function answer(i) {
   const newScore = predictedScore();
   session.showing = {
     ...pack,
-    picked: i,
+    id: q.id,
     ok,
     gain,
     prevScore,
@@ -658,6 +684,7 @@ function goNext(fromClick) {
   if (fromClick && Date.now() < session.advanceAt) return;
   session.showing = null;
   session.deal = null;
+  session.revealed = null;
   session.currentId = null;
   if ((location.hash.split('?')[0] || '') !== '#/play') {
     location.hash = '#/play';
@@ -679,9 +706,27 @@ function bindQuiz() {
       goNext(true);
     };
     window.__pick = null;
+    window.__reveal = null;
     return;
   }
-  document.querySelectorAll('#answers button').forEach(btn => {
+  const reveal = document.getElementById('reveal-q');
+  if (reveal) {
+    window.__reveal = () => {
+      const q = currentQuestion();
+      if (!q) return;
+      session.revealed = q.id;
+      mount();
+    };
+    reveal.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.__reveal();
+    };
+    window.__pick = null;
+    return;
+  }
+  window.__reveal = null;
+  document.querySelectorAll('#answers button[data-i]').forEach(btn => {
     btn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -696,6 +741,11 @@ function onKey(e) {
   if (e.key === 'Enter' && document.getElementById('next-q')) {
     e.preventDefault();
     goNext();
+    return;
+  }
+  if ((e.key === 'Enter' || e.key === ' ') && window.__reveal) {
+    e.preventDefault();
+    window.__reveal();
     return;
   }
   const map = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3, A: 0, B: 1, C: 2, D: 3 };

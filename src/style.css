@@ -271,6 +271,40 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
 }
 .answers button.correct { border-color: var(--good); background: #ecfdf5 }
 .answers button.wrong { border-color: var(--bad); background: #fef2f2 }
+.card-wrap { display: grid; gap: 10px }
+.card-wrap .primary.fat { margin-top: 0 }
+.card-answer {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 12px;
+  padding: 16px;
+}
+.card-answer b { display: block; font-size: 18px; line-height: 1.6 }
+.card-answer p { margin: 8px 0 0; color: #374151; font-size: 14px; line-height: 1.8 }
+.self-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.self-grade button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font: 700 16px 'Noto Sans JP', sans-serif;
+  color: var(--ink);
+  cursor: pointer;
+}
+.self-grade strong {
+  display: inline-grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  font: 700 12px 'IBM Plex Mono', sans-serif;
+}
+.self-grade .grade-ok { border-color: #a7f3d0; color: var(--good) }
+.self-grade .grade-ng { border-color: #fecaca; color: var(--bad) }
 .hint { text-align: center; color: var(--muted); font-size: 12px; line-height: 1.7 }
 .feedback { border-radius: 14px; padding: 16px; margin-top: 14px; border: 1px solid var(--line) }
 .feedback.good { background: #ecfdf5; border-color: #a7f3d0 }
