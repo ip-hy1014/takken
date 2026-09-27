@@ -538,9 +538,8 @@ function play() {
     </div></main>`;
   }
   const shown = session.showing;
-  const isCard = Boolean(q.ans);
-  const revealed = isCard && (shown || session.revealed === q.id);
-  const pack = isCard ? null : (shown || deal(q));
+  const answerText = q.ans || (q.a && q.a[q.correct]) || '';
+  const revealed = Boolean(shown || session.revealed === q.id);
   const card = cardOf(q.id);
   const kind = shown?.kind || (
     session.queue[0] === q.id && card ? 'やり直し' : card ? '復習' : '新しい問題'
@@ -549,24 +548,16 @@ function play() {
   const heat = Math.min(100, session.combo * 12);
   const ret = card ? Math.round(retentionOf(card) * 100) : null;
   const remain = Math.max(0, target - state.daily.answered);
-  let answers;
-  if (isCard) {
-    answers = !revealed
-      ? `<button type="button" class="primary fat" id="reveal-q">答えを見る</button>`
-      : `<div class="card-answer">
-          <b>${esc(q.ans)}</b>
-          <p>${esc(q.why)}</p>
-        </div>
-        ${shown ? '' : `<div class="self-grade">
-          <button type="button" data-i="0" class="grade-ok"><strong>1</strong>覚えていた</button>
-          <button type="button" data-i="1" class="grade-ng"><strong>2</strong>忘れていた</button>
-        </div>`}`;
-  } else {
-    answers = pack.a.map((a, i) => {
-      const cls = shown ? (i === pack.correct ? 'correct' : (i === shown.picked && !shown.ok ? 'wrong' : '')) : '';
-      return `<button type="button" data-i="${i}" ${shown ? 'disabled' : ''} class="${cls}"><strong>${i + 1}</strong>${esc(a)}</button>`;
-    }).join('');
-  }
+  const answers = !revealed
+    ? `<button type="button" class="primary fat" id="reveal-q">答えを見る</button>`
+    : `<div class="card-answer">
+        <b>${esc(answerText)}</b>
+        <p>${esc(q.why)}</p>
+      </div>
+      ${shown ? '' : `<div class="self-grade">
+        <button type="button" data-i="0" class="grade-ok"><strong>1</strong>覚えていた</button>
+        <button type="button" data-i="1" class="grade-ng"><strong>2</strong>忘れていた</button>
+      </div>`}`;
 
   let feedback = '';
   if (shown) {
@@ -580,10 +571,9 @@ function play() {
     feedback = `
       <div class="feedback ${shown.ok ? 'good' : 'bad'}">
         <div class="fb-top">
-          <b>${isCard ? (shown.ok ? '覚えていた' : '忘れていた') : (shown.ok ? '正解' : '不正解')} · +${shown.gain} XP${overtime() && shown.ok ? '（2倍）' : ''}</b>
+          <b>${shown.ok ? '覚えていた' : '忘れていた'} · +${shown.gain} XP${overtime() && shown.ok ? '（2倍）' : ''}</b>
           ${extra}
         </div>
-        ${isCard ? '' : `<p>${esc(q.why)}</p>`}
         <p class="next-due">${intervalCopy(cardOf(q.id), shown.ok)}</p>
         <p class="score-delta">${scoreLine}</p>
         <button type="button" class="primary fat" id="next-q">${nextLabel}</button>
@@ -603,11 +593,9 @@ function play() {
         </div>
       </div>
       <h1>${esc(q.q)}</h1>
-      <div id="answers" class="${isCard ? 'card-wrap' : 'answers'}">${answers}</div>
+      <div id="answers" class="card-wrap">${answers}</div>
       <div id="feedback">${feedback}</div>
-      <p class="hint">${isCard
-        ? '答えを思い浮かべてから開きます。Enterで答えを表示、1で覚えていた、2で忘れていた。'
-        : 'キーボードの1〜4でも選べます。Enterで次へ進みます。選択肢の並びは毎回変わります。'}</p>
+      <p class="hint">答えを思い浮かべてから開きます。Enterで答えを表示、1で覚えていた、2で忘れていた。</p>
     </main>`;
 }
 
@@ -622,14 +610,8 @@ function intervalCopy(card, ok) {
 
 function answer(i) {
   const q = currentQuestion();
-  if (!q || session.showing) return;
-  if (q.ans) {
-    if (session.revealed !== q.id) return;
-    grade(q, i === 0, { picked: i });
-    return;
-  }
-  const pack = deal(q);
-  grade(q, i === pack.correct, { ...pack, picked: i });
+  if (!q || session.showing || session.revealed !== q.id || i > 1) return;
+  grade(q, i === 0, { picked: i });
 }
 
 function grade(q, ok, pack) {
