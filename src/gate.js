@@ -60,7 +60,7 @@ async function unlock(password) {
   const text = await decrypt(password, window.TAKKEN_VAULT);
   const parts = JSON.parse(text);
   for (const code of parts) await loadCode(code);
-  await loadUrl('src/main.js?v=4');
+  await loadUrl('src/main.js?v=5');
   localStorage.setItem(PASS_KEY, password);
   document.getElementById('gate').hidden = true;
 }
