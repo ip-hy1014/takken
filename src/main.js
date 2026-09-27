@@ -34,7 +34,7 @@ function blankDaily(date) {
 }
 
 function loadSession() {
-  const base = { combo: 0, xp: 0, answered: 0, started: Date.now(), queue: [], showing: null, deal: null, currentId: null, advanceAt: 0 };
+  const base = { combo: 0, xp: 0, answered: 0, started: Date.now(), queue: [], revisit: [], untilRevisit: 0, lastId: null, retryId: null, showing: null, deal: null, currentId: null, advanceAt: 0 };
   try {
     const raw = sessionStorage.getItem(SESSION);
     if (!raw) return base;
@@ -50,7 +50,11 @@ function persistSession() {
     xp: session.xp,
     answered: session.answered,
     started: session.started,
-    queue: session.queue
+    queue: session.queue,
+    revisit: session.revisit,
+    untilRevisit: session.untilRevisit,
+    lastId: session.lastId,
+    retryId: session.retryId
   }));
 }
 
@@ -217,16 +221,29 @@ function currentQuestion() {
     const current = questionById(session.currentId);
     if (current) return current;
   }
-  let q = null;
-  while (session.queue.length) {
-    const id = session.queue[0];
-    q = questionById(id);
-    if (q) break;
-    session.queue.shift();
-  }
-  if (!q) q = dueCards()[0] || nextNew() || weakest();
+  const q = pickNext();
   session.currentId = q ? q.id : null;
   return q;
+}
+
+function pickNext() {
+  const avoid = session.lastId;
+  session.revisit = session.revisit || [];
+  if (session.revisit.length && !(session.untilRevisit > 0)) {
+    const id = session.revisit.shift();
+    const again = questionById(id);
+    if (again && again.id !== avoid) {
+      session.untilRevisit = 3;
+      session.retryId = again.id;
+      return again;
+    }
+  }
+  if (session.untilRevisit > 0) session.untilRevisit -= 1;
+  session.retryId = null;
+  return dueCards().find(q => q.id !== avoid)
+    || nextNew()
+    || weakest()
+    || questionById(avoid);
 }
 
 function deal(q) {
@@ -543,7 +560,7 @@ function play() {
   const pack = isCard ? null : (shown || deal(q));
   const card = cardOf(q.id);
   const kind = shown?.kind || (
-    session.queue[0] === q.id && card ? 'やり直し' : card ? '復習' : '新しい問題'
+    session.retryId === q.id ? 'やり直し' : card ? '復習' : '新しい問題'
   );
   const target = dailyTarget();
   const heat = Math.min(100, session.combo * 12);
@@ -609,7 +626,7 @@ function play() {
 }
 
 function intervalCopy(card, ok) {
-  if (!ok) return 'すぐもう一度出します。10分後にももう一度出ます。';
+  if (!ok) return 'ほかの問題を3問はさんで、もう一度出します。10分後にも出ます。';
   if (!card) return '記録しました。';
   if (card.stability <= MIN10) return '10分後にもう一度出します。忘れやすい時間帯です。';
   if (card.stability <= DAY) return '明日もう一度出します。';
@@ -633,14 +650,17 @@ function grade(q, ok, pack) {
   session.currentId = q.id;
   session.advanceAt = Date.now() + 700;
   const wasNew = !cardOf(q.id);
-  const kind = session.queue[0] === q.id && !wasNew ? 'やり直し' : wasNew ? '新しい問題' : '復習';
+  const kind = session.retryId === q.id ? 'やり直し' : wasNew ? '新しい問題' : '復習';
   const prevScore = predictedScore();
+  session.lastId = q.id;
+  session.revisit = (session.revisit || []).filter(id => id !== q.id);
+  session.queue = (session.queue || []).filter(id => id !== q.id);
   if (ok) {
     session.combo += 1;
-    session.queue = session.queue.filter(id => id !== q.id);
   } else {
     session.combo = 0;
-    session.queue = [q.id, ...session.queue.filter(id => id !== q.id)];
+    session.revisit.push(q.id);
+    if (!(session.untilRevisit > 0)) session.untilRevisit = 3;
   }
   const gain = xpFor(ok);
   session.xp += gain;
@@ -773,7 +793,7 @@ function memory() {
       <section class="page-title">
         <p class="eyebrow">定着 ${avg}% · 学習済み ${learned.length}/${QUESTIONS.length}</p>
         <h1>復習</h1>
-        <p>忘れてからではなく、忘れかける前に出します。間違えた問題はすぐもう一度、あわせて10分後にも出ます。</p>
+        <p>忘れてからではなく、忘れかける前に出します。間違えた問題は、ほかの問題を3問はさんだあとと、10分後に出ます。</p>
       </section>
       ${due.length ? `<h3 class="list-h">今やる · ${due.length}</h3><div class="review-list">${due.map(q => row(q, '復習する')).join('')}</div>` : ''}
       ${soon.length ? `<h3 class="list-h">まもなく · ${soon.length}</h3><div class="review-list">${soon.map(q => row(q, '先にやる')).join('')}</div>` : ''}
