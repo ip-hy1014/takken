@@ -424,6 +424,14 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
 }
 .gate-error { color: var(--bad) !important; font-weight: 700; margin-top: 12px !important }
 
+.guide-frame {
+  display: block;
+  width: 100%;
+  height: calc(100dvh - 124px);
+  border: 0;
+  background: #fff;
+}
+
 .shake { animation: shake .28s linear }
 @keyframes shake {
   0%,100% { transform: translateX(0) }
@@ -481,4 +489,5 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
     transform: translate(-50%, 140%);
   }
   #toast.show { transform: translate(-50%, 0) }
+  .guide-frame { height: calc(100dvh - 148px - env(safe-area-inset-bottom)) }
 }

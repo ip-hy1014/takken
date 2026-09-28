@@ -424,7 +424,8 @@ function header(view) {
         ['/', 'ホーム', ''],
         ['/play', '問題', due ? String(due) : ''],
         ['/memory', '復習', soon ? String(soon) : ''],
-        ['/plan', '計画', '']
+        ['/plan', '計画', ''],
+        ['/guide', '論点', '']
       ].map(([p, n, badge]) => `
         <a class="${view === p ? 'active' : ''}" href="#${p}">${n}${badge ? `<em>${badge}</em>` : ''}</a>
       `).join('')}
@@ -849,6 +850,16 @@ function bindGlobal() {
   });
 }
 
+function guide() {
+  const html = window.TAKKEN_GUIDE || '';
+  if (!html) {
+    return `${header('/guide')}<main class="wrap"><p>論点を読み込めませんでした。</p></main>`;
+  }
+  if (guide._url) URL.revokeObjectURL(guide._url);
+  guide._url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  return `${header('/guide')}<iframe class="guide-frame" src="${guide._url}" title="論点整理"></iframe>`;
+}
+
 function tick() {
   const hook = nextDueMs();
   const due = dueCards().length;
@@ -876,6 +887,7 @@ function mount() {
   document.querySelector('#app').innerHTML = path === '/' ? dashboard()
     : path === '/play' ? play()
     : path === '/memory' ? memory()
+    : path === '/guide' ? guide()
     : plan();
   if (path === '/play' && currentQuestion()) bindQuiz();
   bindGlobal();

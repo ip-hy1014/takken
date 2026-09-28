@@ -9,7 +9,7 @@ if (!password) {
 }
 
 const root = path.join(__dirname, '..');
-const files = ['src/questions.js', 'src/memo-questions.js', 'src/gemini-questions.js'];
+const files = ['src/questions.js', 'src/memo-questions.js', 'src/gemini-questions.js', '論点.html'];
 const parts = files.map(file => fs.readFileSync(path.join(root, file), 'utf8'));
 const plain = Buffer.from(JSON.stringify(parts), 'utf8');
 const salt = crypto.randomBytes(16);
