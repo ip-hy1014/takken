@@ -853,12 +853,18 @@ function bindGlobal() {
 }
 
 function statCanon(value) {
-  return String(value ?? '')
+  let text = String(value ?? '')
     .normalize('NFKC')
     .replace(/[,\s]/g, '')
     .replace(/約/g, '')
     .replace(/[％%]/g, '')
     .replace(/[ので]/g, '');
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/(兆|億|万|円)$/g, '');
+  } while (text !== previous);
+  return text;
 }
 
 function statMatch(field, raw) {
@@ -901,8 +907,8 @@ const STAT_GROUPS = [
     id: 'corp',
     title: '法人企業統計（令和6年度）',
     sentences: [
-      { parts: ['令和6年度における不動産業の売上高は約', { id: 'c1', accept: ['58兆8000億円', '58.8兆円'], show: '58兆8,000億円' }, 'と対前年度比で', { id: 'c2', accept: ['4.2'], show: '4.2' }, '％増加し、', { id: 'c3', accept: ['2'], show: '2' }, '年連続で増加した。全産業の売上高の約', { id: 'c4', accept: ['3.5'], show: '3.5' }, '％を占めている。'] },
-      { parts: ['令和6年度における不動産業の経常利益は約', { id: 'c5', accept: ['7.9兆円', '7.9兆'], show: '7.9兆円' }, 'と対前年度比で', { id: 'c6', accept: ['8.7'], show: '8.7' }, '％増加し、', { id: 'c7', accept: ['2'], show: '2' }, '年連続で増加した。'] }
+      { parts: ['令和6年度における不動産業の売上高は約', { id: 'c1', accept: ['58'], show: '58' }, '兆', { id: 'c1b', accept: ['8000'], show: '8,000' }, '億円と対前年度比で', { id: 'c2', accept: ['4.2'], show: '4.2' }, '％増加し、', { id: 'c3', accept: ['2'], show: '2' }, '年連続で増加した。全産業の売上高の約', { id: 'c4', accept: ['3.5'], show: '3.5' }, '％を占めている。'] },
+      { parts: ['令和6年度における不動産業の経常利益は約', { id: 'c5', accept: ['7.9'], show: '7.9' }, '兆円と対前年度比で', { id: 'c6', accept: ['8.7'], show: '8.7' }, '％増加し、', { id: 'c7', accept: ['2'], show: '2' }, '年連続で増加した。'] }
     ]
   },
   {
@@ -1035,7 +1041,7 @@ function bindStats() {
         const good = statMatch(field, input.value);
         input.classList.toggle('stat-good', good);
         input.classList.toggle('stat-bad', !good);
-        if (!good) input.value = field.show;
+        if (!good || statCanon(input.value) === statCanon(field.show) && input.value !== field.show) input.value = field.show;
         if (good) ok += 1;
       });
       document.querySelector(`[data-score="${group.id}"]`).textContent = `${ok} / ${fields.length} です。`;
