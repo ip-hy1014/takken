@@ -450,6 +450,28 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
   display: flex;
   align-items: center;
 }
+.stat-sentence {
+  font-size: 17px;
+  line-height: 2.8;
+  margin: 0 0 14px;
+}
+.stat-sentence input {
+  display: inline-block;
+  width: 9em;
+  max-width: 70%;
+  min-height: 44px;
+  margin: 2px 4px;
+  vertical-align: middle;
+  font: 16px/1.4 'Noto Sans JP', sans-serif;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+.stat-sentence input.stat-good { border-color: var(--good) }
+.stat-sentence input.stat-bad { border-color: var(--bad) }
+.stat-sentence em { font-style: normal; color: var(--bad); margin-right: 4px }
 .stat-row {
   display: grid;
   grid-template-columns: 1fr;

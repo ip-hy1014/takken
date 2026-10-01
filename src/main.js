@@ -853,107 +853,63 @@ function bindGlobal() {
 }
 
 function statCanon(value) {
-  let text = String(value ?? '')
+  return String(value ?? '')
     .normalize('NFKC')
     .replace(/[,\s]/g, '')
     .replace(/約/g, '')
-    .replace(/[％%]/g, '');
-  let previous;
-  do {
-    previous = text;
-    text = text.replace(/(戸|件|年|連続|業者|万人|万ha|ha|千㎡|㎡|円)$/g, '');
-  } while (text !== previous);
-  return text;
+    .replace(/[％%]/g, '')
+    .replace(/[ので]/g, '');
 }
 
 function statMatch(field, raw) {
-  const text = String(raw ?? '').normalize('NFKC');
-  if (field.kind === 'select') return text === field.answer;
-  if (field.kind === 'cities') return ['札幌', '仙台', '広島', '福岡'].every(name => text.includes(name));
-  if (field.kind === 'order') {
-    const keys = ['森林', '農地', '宅地', '道路'];
-    const idx = keys.map(key => text.indexOf(key));
-    if (idx.some(i => i < 0)) return false;
-    if (!(idx[0] < idx[1] && idx[1] < idx[2] && idx[2] < idx[3])) return false;
-    const water = Math.max(text.indexOf('水面'), text.indexOf('河川'));
-    return water > idx[3] && text.indexOf('原野') > water;
-  }
-  const got = statCanon(text);
+  const got = statCanon(raw);
   if (!got) return false;
   return field.accept.some(answer => statCanon(answer) === got);
+}
+
+function statBlanks(group) {
+  return group.sentences.flatMap(sentence => sentence.parts.filter(part => part && part.id));
 }
 
 const STAT_GROUPS = [
   {
     id: 'build',
-    title: '建築着工統計',
-    lead: '令和8年1月公表の令和7年計です。',
-    fields: [
-      { id: 'b1', label: '新設住宅着工戸数', hint: '戸数または約○万戸', accept: ['740667', '74万', '74.1万'], show: '740,667戸（約74万戸）' },
-      { id: 'b2', label: '着工戸数の増減', kind: 'select', options: ['増加', '減少', '横ばい'], answer: '減少', show: '減少' },
-      { id: 'b3', label: '着工戸数の前年比（%）', hint: '数字だけ', accept: ['6.5'], show: '6.5%減' },
-      { id: 'b4', label: '着工戸数の増減が続いた年数', hint: '年', accept: ['3'], show: '3年連続' },
-      { id: 'b5', label: '着工床面積の前年比（%）', hint: '数字だけ', accept: ['6.6'], show: '6.6%減' },
-      { id: 'b6', label: '着工床面積の増減が続いた年数', hint: '年', accept: ['4'], show: '4年連続' },
-      { id: 'b7', label: '持家の増減', kind: 'select', options: ['増加', '減少', '横ばい'], answer: '減少', show: '減少' },
-      { id: 'b8', label: '持家の増減が続いた年数', hint: '年', accept: ['4'], show: '4年連続（約20.1万戸、7.7%減）' },
-      { id: 'b9', label: '貸家の前年比（%）', hint: '数字だけ', accept: ['5', '5.0'], show: '5.0%減、3年連続（約32.4万戸）' },
-      { id: 'b10', label: '分譲住宅の前年比（%）', hint: '数字だけ', accept: ['7.6'], show: '7.6%減、3年連続（約20.8万戸）' },
-      { id: 'b11', label: '分譲マンションの前年比（%）', hint: '数字だけ', accept: ['12.2'], show: '12.2%減、3年連続（約9.0万戸）' },
-      { id: 'b12', label: '分譲一戸建ての前年比（%）', hint: '数字だけ', accept: ['4.3'], show: '4.3%減、3年連続（約11.5万戸）' }
+    title: '建築着工統計（令和8年1月公表）',
+    sentences: [
+      { parts: ['令和7年の新設住宅着工戸数は約', { id: 'b1', accept: ['74'], show: '74' }, '万戸であり、前年比では', { id: 'b2', accept: ['6.5％減', '6.5減'], show: '6.5％減' }, 'となり、', { id: 'b3', accept: ['3年連続の減少', '3年連続減少'], show: '3年連続の減少' }, '。'] },
+      { parts: ['令和7年の新設住宅着工床面積は', { id: 'b4', accept: ['56885'], show: '56,885' }, '千㎡であり、前年比では', { id: 'b5', accept: ['6.6％減', '6.6減'], show: '6.6％減' }, 'となり、', { id: 'b6', accept: ['4年連続の減少', '4年連続減少'], show: '4年連続の減少' }, '。'] }
     ]
   },
   {
     id: 'price',
-    title: '地価公示',
-    lead: '令和8年3月公表です。',
-    fields: [
-      { id: 'p1', label: '全国の住宅地', kind: 'select', options: ['上昇', '下落', '横ばい'], answer: '上昇', show: '上昇' },
-      { id: 'p2', label: '住宅地と商業地の変動が続いた年数', hint: '年', accept: ['5'], show: '5年連続の上昇' },
-      { id: 'p3', label: '全国の住宅地の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '前年と同じ', show: '前年と同じ（+2.1%）' },
-      { id: 'p4', label: '全国の商業地の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '拡大', show: '拡大（+4.3%）' },
-      { id: 'p5', label: '全国の全用途の変動率（%）', hint: '数字だけ', accept: ['2.8'], show: '+2.8%（上昇幅は拡大）' },
-      { id: 'p6', label: '全国の工業地の変動が続いた年数', hint: '年', accept: ['10'], show: '10年連続（+4.9%）' },
-      { id: 'p7', label: '三大都市圏の工業地の変動が続いた年数', hint: '年', accept: ['12'], show: '12年連続（+6.7%）' },
-      { id: 'p8', label: '地方圏の工業地の変動が続いた年数', hint: '年', accept: ['9'], show: '9年連続（+3.1%）' },
-      { id: 'p9', label: '名古屋圏の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '縮小', show: '縮小（東京圏と大阪圏は拡大）' },
-      { id: 'p10', label: '地方四市の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '縮小', show: '縮小' },
-      { id: 'p11', label: '地方四市', kind: 'cities', hint: '4都市', show: '札幌、仙台、広島、福岡' }
+    title: '地価公示（令和8年3月公表）',
+    sentences: [
+      { parts: ['全国平均では、全用途平均・住宅地・商業地のいずれも', { id: 'p1', accept: ['5年連続で上昇', '5年連続の上昇', '5年連続上昇'], show: '5年連続で上昇' }, 'した。'] },
+      { parts: ['三大都市圏平均では、全用途平均・住宅地・商業地のいずれも', { id: 'p2', accept: ['5年連続で上昇', '5年連続の上昇', '5年連続上昇'], show: '5年連続で上昇' }, 'した。'] },
+      { parts: ['地方圏平均では、全用途平均・住宅地・商業地のいずれも', { id: 'p3', accept: ['5年連続で上昇', '5年連続の上昇', '5年連続上昇'], show: '5年連続で上昇' }, 'した。'] }
     ]
   },
   {
     id: 'land',
-    title: '土地取引と宅地面積',
-    lead: '件数は令和7年、宅地面積は令和5年です。',
-    fields: [
-      { id: 'l1', label: '令和7年の売買による所有権移転登記', hint: '約○万件', accept: ['130万', '130'], show: '約130万件' },
-      { id: 'l2', label: 'その件数の動き', kind: 'select', options: ['増加', '減少', 'ほぼ横ばい'], answer: 'ほぼ横ばい', show: 'ほぼ横ばい' },
-      { id: 'l3', label: '令和5年の宅地面積', hint: '約○万ha', accept: ['199万', '199'], show: '約199万ヘクタール' },
-      { id: 'l4', label: '国土面積が多い順', kind: 'order', hint: '多い順に区切って書く', show: '森林、農地、宅地、道路、水面・河川・水路、原野' }
+    title: '土地白書',
+    sentences: [
+      { parts: ['令和7年の土地の売買による所有権の移転登記は、全国で約', { id: 'l1', accept: ['130'], show: '130' }, '万件であり、ほぼ', { id: 'l2', accept: ['横ばい'], show: '横ばい' }, 'で推移している。'] },
+      { parts: ['令和5年の住宅地、工業用地等の宅地は、全国で約', { id: 'l3', accept: ['199'], show: '199' }, '万ヘクタールある。'] }
     ]
   },
   {
     id: 'corp',
     title: '法人企業統計（令和6年度）',
-    lead: '令和6年度の不動産業です。',
-    fields: [
-      { id: 'c1', label: '不動産業の売上高', hint: '約○兆円', accept: ['58.8兆', '58兆8000億', '588000億'], show: '約58兆8,000億円（4.2%増、2年連続の増加、全産業の約3.5%）' },
-      { id: 'c2', label: '売上高の増減', kind: 'select', options: ['増加', '減少', '横ばい'], answer: '増加', show: '増加' },
-      { id: 'c3', label: '経常利益', hint: '約○兆円', accept: ['7.9兆', '7.9'], show: '約7.9兆円（8.7%増、2年連続の増加）' },
-      { id: 'c4', label: '営業利益', hint: '約○兆円', accept: ['7.1兆', '7.1'], show: '約7.1兆円（12.9%増、2年連続の増加）' },
-      { id: 'c5', label: '営業利益の増減', kind: 'select', options: ['増加', '減少', '横ばい'], answer: '増加', show: '増加' },
-      { id: 'c6', label: '売上高経常利益率（%）', hint: '数字だけ', accept: ['13.6'], show: '13.6%（5年連続の増加。全産業は6.8%）' }
+    sentences: [
+      { parts: ['不動産業の売上高は約', { id: 'c1', accept: ['58兆8000億円', '58.8兆円'], show: '58兆8,000億円' }, 'と対前年度比で', { id: 'c2', accept: ['4.2％増加', '4.2増加', '4.2％増'], show: '4.2％増加' }, 'し、', { id: 'c3', accept: ['2年連続で増加', '2年連続の増加', '2年連続増加'], show: '2年連続で増加' }, 'した。全産業の売上高の約', { id: 'c4', accept: ['3.5'], show: '3.5' }, '％を占めている。'] },
+      { parts: ['不動産業の経常利益は約', { id: 'c5', accept: ['7.9兆円', '7.9兆'], show: '7.9兆円' }, 'と対前年度比で', { id: 'c6', accept: ['8.7％増加', '8.7増加', '8.7％増'], show: '8.7％増加' }, 'し、', { id: 'c7', accept: ['2年連続で増加', '2年連続の増加', '2年連続増加'], show: '2年連続で増加' }, 'した。'] }
     ]
   },
   {
     id: 'gyosha',
-    title: '宅建業者数',
-    lead: '令和7年3月末です。',
-    fields: [
-      { id: 'g1', label: '宅建業者数', hint: '業者数または約○万', accept: ['132291', '13.2万', '13万'], show: '132,291業者' },
-      { id: 'g2', label: '前年比（%）', hint: '数字だけ', accept: ['1.3'], show: '1.3%増' },
-      { id: 'g3', label: '業者数の増減が続いた年数', hint: '年', accept: ['11'], show: '11年連続の増加' },
-      { id: 'g4', label: '宅建士の総登録者数', hint: '約○万人', accept: ['121万', '121'], show: '約121万人' }
+    title: '宅建業者数（令和7年3月末）',
+    sentences: [
+      { parts: ['宅地建物取引業者の全事業者数は', { id: 'g1', accept: ['132291'], show: '132,291' }, '業者であり（', { id: 'g2', accept: ['11年連続で増加', '11年連続の増加', '11年連続増加'], show: '11年連続で増加' }, '）。'] }
     ]
   }
 ];
@@ -1027,19 +983,18 @@ const STAT_EXAM = [
   }
 ];
 
-function statField(field) {
-  const control = field.kind === 'select'
-    ? `<select data-stat="${field.id}"><option value="">選ぶ</option>${field.options.map(option => `<option>${option}</option>`).join('')}</select>`
-    : `<input data-stat="${field.id}" inputmode="${field.kind ? 'text' : 'decimal'}" autocomplete="off" placeholder="${field.hint || ''}"/>`;
-  return `<label class="stat-row"><span>${field.label}</span>${control}<em data-judge="${field.id}"></em></label>`;
+function statSentence(sentence) {
+  return `<p class="stat-sentence">${sentence.parts.map(part => {
+    if (typeof part === 'string') return part;
+    return `<input data-stat="${part.id}" autocomplete="off"/><em data-judge="${part.id}"></em>`;
+  }).join('')}</p>`;
 }
 
 function statsPage() {
   const groups = STAT_GROUPS.map(group => `
     <section class="panel stat-group">
       <h2>${group.title}</h2>
-      <p>${group.lead}</p>
-      ${group.fields.map(statField).join('')}
+      ${group.sentences.map(statSentence).join('')}
       <button type="button" class="primary" data-stat-grade="${group.id}">この節を採点する</button>
       <p class="stat-score" data-score="${group.id}"></p>
     </section>
@@ -1056,7 +1011,7 @@ function statsPage() {
   return `${header('/stats')}
     <main class="stat-main">
       <h1>統計の暗記</h1>
-      <p>令和8年試験の需給統計です。数字か増減を入れて、節ごとに採点します。間違えた欄には正解を出します。</p>
+      <p>需給統計の文です。空欄に数字を入れて、節ごとに採点します。間違えた欄にだけ正解を出します。</p>
       ${groups}
       <details class="panel">
         <summary>本番と同じ四択を解く</summary>
@@ -1072,17 +1027,18 @@ function bindStats() {
   document.querySelectorAll('[data-stat-grade]').forEach(button => {
     button.onclick = () => {
       const group = STAT_GROUPS.find(item => item.id === button.dataset.statGrade);
+      const fields = statBlanks(group);
       let ok = 0;
-      group.fields.forEach(field => {
+      fields.forEach(field => {
         const input = document.querySelector(`[data-stat="${field.id}"]`);
         const judge = document.querySelector(`[data-judge="${field.id}"]`);
         const good = statMatch(field, input.value);
         input.classList.toggle('stat-good', good);
         input.classList.toggle('stat-bad', !good);
-        judge.textContent = good ? '合っています。' : `正解は${field.show}です。`;
+        judge.textContent = good ? '' : `正解は${field.show}です。`;
         if (good) ok += 1;
       });
-      document.querySelector(`[data-score="${group.id}"]`).textContent = `${ok} / ${group.fields.length} です。`;
+      document.querySelector(`[data-score="${group.id}"]`).textContent = `${ok} / ${fields.length} です。`;
     };
   });
   const examButton = document.getElementById('stat-exam-grade');
