@@ -443,8 +443,13 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
 .stat-main > p, .stat-group p, .panel > p { line-height: 1.7 }
 .stat-group h2, .stat-main .panel h2 { font-size: 20px; margin: 0 0 8px }
 .stat-group { margin: 16px 0 }
-.stat-group details { margin: 0 0 12px }
-.stat-group summary { font-weight: 700; cursor: pointer }
+.stat-main > details.panel > summary {
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
 .stat-row {
   display: grid;
   grid-template-columns: 1fr;
