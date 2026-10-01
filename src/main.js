@@ -892,11 +892,11 @@ const STAT_GROUPS = [
       { id: 'b1', label: '新設住宅着工戸数', hint: '戸数または約○万戸', accept: ['740667', '74万', '74.1万'], show: '740,667戸（約74万戸）' },
       { id: 'b2', label: '着工戸数の増減', kind: 'select', options: ['増加', '減少', '横ばい'], answer: '減少', show: '減少' },
       { id: 'b3', label: '着工戸数の前年比（%）', hint: '数字だけ', accept: ['6.5'], show: '6.5%減' },
-      { id: 'b4', label: '着工戸数の連続年数', hint: '年', accept: ['3'], show: '3年連続' },
+      { id: 'b4', label: '着工戸数の増減が続いた年数', hint: '年', accept: ['3'], show: '3年連続' },
       { id: 'b5', label: '着工床面積の前年比（%）', hint: '数字だけ', accept: ['6.6'], show: '6.6%減' },
-      { id: 'b6', label: '着工床面積の連続年数', hint: '年', accept: ['4'], show: '4年連続' },
+      { id: 'b6', label: '着工床面積の増減が続いた年数', hint: '年', accept: ['4'], show: '4年連続' },
       { id: 'b7', label: '持家の増減', kind: 'select', options: ['増加', '減少', '横ばい'], answer: '減少', show: '減少' },
-      { id: 'b8', label: '持家の連続年数', hint: '年', accept: ['4'], show: '4年連続（約20.1万戸、7.7%減）' },
+      { id: 'b8', label: '持家の増減が続いた年数', hint: '年', accept: ['4'], show: '4年連続（約20.1万戸、7.7%減）' },
       { id: 'b9', label: '貸家の前年比（%）', hint: '数字だけ', accept: ['5', '5.0'], show: '5.0%減、3年連続（約32.4万戸）' },
       { id: 'b10', label: '分譲住宅の前年比（%）', hint: '数字だけ', accept: ['7.6'], show: '7.6%減、3年連続（約20.8万戸）' },
       { id: 'b11', label: '分譲マンションの前年比（%）', hint: '数字だけ', accept: ['12.2'], show: '12.2%減、3年連続（約9.0万戸）' },
@@ -909,13 +909,13 @@ const STAT_GROUPS = [
     lead: '令和8年3月公表です。',
     fields: [
       { id: 'p1', label: '全国の住宅地', kind: 'select', options: ['上昇', '下落', '横ばい'], answer: '上昇', show: '上昇' },
-      { id: 'p2', label: '全国の住宅地・商業地の連続年数', hint: '年', accept: ['5'], show: '5年連続の上昇' },
+      { id: 'p2', label: '住宅地と商業地の変動が続いた年数', hint: '年', accept: ['5'], show: '5年連続の上昇' },
       { id: 'p3', label: '全国の住宅地の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '前年と同じ', show: '前年と同じ（+2.1%）' },
       { id: 'p4', label: '全国の商業地の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '拡大', show: '拡大（+4.3%）' },
       { id: 'p5', label: '全国の全用途の変動率（%）', hint: '数字だけ', accept: ['2.8'], show: '+2.8%（上昇幅は拡大）' },
-      { id: 'p6', label: '全国の工業地の連続年数', hint: '年', accept: ['10'], show: '10年連続（+4.9%）' },
-      { id: 'p7', label: '三大都市圏の工業地の連続年数', hint: '年', accept: ['12'], show: '12年連続（+6.7%）' },
-      { id: 'p8', label: '地方圏の工業地の連続年数', hint: '年', accept: ['9'], show: '9年連続（+3.1%）' },
+      { id: 'p6', label: '全国の工業地の変動が続いた年数', hint: '年', accept: ['10'], show: '10年連続（+4.9%）' },
+      { id: 'p7', label: '三大都市圏の工業地の変動が続いた年数', hint: '年', accept: ['12'], show: '12年連続（+6.7%）' },
+      { id: 'p8', label: '地方圏の工業地の変動が続いた年数', hint: '年', accept: ['9'], show: '9年連続（+3.1%）' },
       { id: 'p9', label: '名古屋圏の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '縮小', show: '縮小（東京圏と大阪圏は拡大）' },
       { id: 'p10', label: '地方四市の変動幅', kind: 'select', options: ['拡大', '前年と同じ', '縮小'], answer: '縮小', show: '縮小' },
       { id: 'p11', label: '地方四市', kind: 'cities', hint: '4都市', show: '札幌、仙台、広島、福岡' }
@@ -952,7 +952,7 @@ const STAT_GROUPS = [
     fields: [
       { id: 'g1', label: '宅建業者数', hint: '業者数または約○万', accept: ['132291', '13.2万', '13万'], show: '132,291業者' },
       { id: 'g2', label: '前年比（%）', hint: '数字だけ', accept: ['1.3'], show: '1.3%増' },
-      { id: 'g3', label: '連続年数', hint: '年', accept: ['11'], show: '11年連続の増加' },
+      { id: 'g3', label: '業者数の増減が続いた年数', hint: '年', accept: ['11'], show: '11年連続の増加' },
       { id: 'g4', label: '宅建士の総登録者数', hint: '約○万人', accept: ['121万', '121'], show: '約121万人' }
     ]
   }
