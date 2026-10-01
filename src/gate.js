@@ -62,7 +62,7 @@ async function unlock(password) {
   const scripts = parts.slice(0, 3);
   window.TAKKEN_GUIDE = parts[3] || '';
   for (const code of scripts) await loadCode(code);
-  await loadUrl('src/main.js?v=7');
+  await loadUrl('src/main.js?v=8');
   localStorage.setItem(PASS_KEY, password);
   document.getElementById('gate').hidden = true;
 }

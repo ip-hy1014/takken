@@ -432,6 +432,44 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
   background: #fff;
 }
 
+.stat-entry {
+  display: block;
+  margin-top: 10px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--accent);
+}
+.stat-main h1 { font-size: 28px; margin: 0 0 8px }
+.stat-main > p, .stat-group p, .panel > p { line-height: 1.7 }
+.stat-group h2, .stat-main .panel h2 { font-size: 20px; margin: 0 0 8px }
+.stat-group { margin: 16px 0 }
+.stat-group details { margin: 0 0 12px }
+.stat-group summary { font-weight: 700; cursor: pointer }
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.stat-row span { font-weight: 700 }
+.stat-row input, .stat-row select {
+  width: 100%;
+  min-height: 44px;
+  font: 16px/1.4 'Noto Sans JP', sans-serif;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  color: var(--ink);
+}
+.stat-row input.stat-good, .stat-row select.stat-good { border-color: var(--good) }
+.stat-row input.stat-bad, .stat-row select.stat-bad { border-color: var(--bad) }
+.stat-row em, .stat-why, .stat-score { font-style: normal; font-size: 15px }
+.stat-exam { border: 0; margin: 0 0 16px; padding: 0 }
+.stat-exam legend { font-weight: 700; margin-bottom: 8px }
+.stat-exam label { display: block; margin: 0 0 8px; line-height: 1.6 }
+.stat-why { margin: 4px 0 0 }
+
 .shake { animation: shake .28s linear }
 @keyframes shake {
   0%,100% { transform: translateX(0) }
