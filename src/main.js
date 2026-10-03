@@ -426,6 +426,7 @@ function header(view) {
         ['/memory', '復習', soon ? String(soon) : ''],
         ['/plan', '計画', ''],
         ['/guide', '論点', ''],
+        ['/gaze', '定点', ''],
         ['/stats', '統計', '']
       ].map(([p, n, badge]) => `
         <a class="${view === p ? 'active' : ''}" href="#${p}">${n}${badge ? `<em>${badge}</em>` : ''}</a>
@@ -482,6 +483,7 @@ function dashboard() {
           </div>
         </div>
         <a class="primary fat" href="#/play">${cta}</a>
+        <a class="stat-entry" href="#/gaze">論点を一点で読む</a>
         <a class="stat-entry" href="#/stats">統計の数字を入れる</a>
       </section>
 
@@ -1064,6 +1066,224 @@ function bindStats() {
   };
 }
 
+const gaze = { index: 0, playing: false, loop: true, ms: 800, timer: 0, cards: null };
+
+function gazeClearTimer() {
+  clearInterval(gaze.timer);
+  gaze.timer = 0;
+}
+
+function gazeSplit(text) {
+  const max = 12;
+  const chars = [...text.replace(/\s+/g, '')];
+  if (!chars.length) return [];
+  const sentences = chars.join('').split(/(?<=[。！？])/).map(part => part.trim()).filter(Boolean);
+  const chunks = [];
+  sentences.forEach(sentence => {
+    if ([...sentence].length <= max + 2) {
+      chunks.push(sentence);
+      return;
+    }
+    let buf = '';
+    sentence.split(/(?<=、)/).forEach(clause => {
+      if ([...(buf + clause)].length <= max) {
+        buf += clause;
+        return;
+      }
+      if (buf) chunks.push(buf);
+      buf = '';
+      if ([...clause].length <= max + 2) {
+        buf = clause;
+        return;
+      }
+      const letters = [...clause];
+      let i = 0;
+      while (i < letters.length) {
+        let end = Math.min(letters.length, i + max);
+        if (end < letters.length) {
+          while (end > i + 6 && /\d/.test(letters[end - 1]) && /\d/.test(letters[end] || '')) end -= 1;
+          if (letters.length - end < 4) end = letters.length;
+        }
+        chunks.push(letters.slice(i, end).join(''));
+        i = end;
+      }
+    });
+    if (buf) chunks.push(buf);
+  });
+  return chunks;
+}
+
+function gazeCards() {
+  if (gaze.cards) return gaze.cards;
+  const html = window.TAKKEN_GUIDE || '';
+  if (!html) return [];
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const root = doc.querySelector('main') || doc.body;
+  const cards = [];
+  let sectionId = 'lead';
+  let sectionTitle = 'はじめに';
+  let skipping = false;
+  const push = (text, kind) => {
+    if (skipping) return;
+    gazeSplit(text).forEach(chunk => {
+      cards.push({ sectionId, sectionTitle, text: chunk, kind });
+    });
+  };
+  const walk = node => {
+    if (!node || node.nodeType !== 1) return;
+    if (node.classList.contains('toc') || node.classList.contains('subtoc')) return;
+    const tag = node.tagName;
+    if (tag === 'H1') {
+      push(node.textContent, 'title');
+      return;
+    }
+    if (tag === 'H2') {
+      sectionId = node.id || sectionTitle;
+      sectionTitle = node.textContent.replace(/\s+/g, '');
+      skipping = sectionId === 'toc';
+      push(sectionTitle, 'title');
+      return;
+    }
+    if (skipping) return;
+    if (tag === 'H3') {
+      sectionId = node.id || sectionId;
+      sectionTitle = node.textContent.replace(/\s+/g, '');
+      push(sectionTitle, 'title');
+      return;
+    }
+    if (tag === 'P' || tag === 'LI' || tag === 'CAPTION') {
+      push(node.textContent, tag === 'CAPTION' ? 'title' : 'body');
+      return;
+    }
+    if (tag === 'TR') {
+      if (node.parentElement && node.parentElement.tagName === 'THEAD') return;
+      const cells = [...node.children].map(cell => cell.textContent.replace(/\s+/g, '')).filter(Boolean);
+      if (cells.length) push(cells.join('。'), 'body');
+      return;
+    }
+    [...node.children].forEach(walk);
+  };
+  [...root.children].forEach(walk);
+  gaze.cards = cards;
+  return cards;
+}
+
+function gazeLine(text) {
+  const chars = [...text];
+  const at = Math.min(chars.length - 1, Math.max(0, Math.round((chars.length - 1) * 0.35)));
+  return chars.map((ch, index) => index === at ? `<b>${esc(ch)}</b>` : esc(ch)).join('');
+}
+
+function gazeSections(cards) {
+  const list = [];
+  const seen = new Set();
+  cards.forEach((card, index) => {
+    if (card.kind !== 'title' || seen.has(card.sectionId)) return;
+    seen.add(card.sectionId);
+    list.push({ id: card.sectionId, title: card.sectionTitle, index });
+  });
+  return list;
+}
+
+function gazePage() {
+  const cards = gazeCards();
+  if (!cards.length) {
+    return `${header('/gaze')}<main class="wrap"><p>論点を読み込めませんでした。</p></main>`;
+  }
+  const sections = gazeSections(cards);
+  const current = cards[Math.min(gaze.index, cards.length - 1)];
+  return `${header('/gaze')}
+    <main class="gaze-main">
+      <p class="gaze-meta" id="gaze-meta">${esc(current.sectionTitle)}　${gaze.index + 1} / ${cards.length}</p>
+      <div class="gaze-stage" id="gaze-stage">
+        <span class="gaze-tick"></span>
+        <p class="gaze-line" id="gaze-line"></p>
+      </div>
+      <div class="gaze-controls">
+        <label>節<select id="gaze-section">${sections.map(section => `<option value="${section.index}" ${section.id === current.sectionId ? 'selected' : ''}>${esc(section.title)}</option>`).join('')}</select></label>
+        <label>速さ<input id="gaze-speed" type="range" min="350" max="1400" step="50" value="${gaze.ms}"/></label>
+        <div class="gaze-buttons">
+          <button type="button" id="gaze-prev">前へ</button>
+          <button type="button" class="primary" id="gaze-toggle">${gaze.playing ? '止める' : '進める'}</button>
+          <button type="button" id="gaze-next">次へ</button>
+        </div>
+        <label class="gaze-loop"><input id="gaze-loop" type="checkbox" ${gaze.loop ? 'checked' : ''}/>この節を繰り返す</label>
+      </div>
+    </main>`;
+}
+
+function gazeShow() {
+  const cards = gazeCards();
+  if (!cards.length) return;
+  if (gaze.index < 0) gaze.index = 0;
+  if (gaze.index >= cards.length) gaze.index = 0;
+  const card = cards[gaze.index];
+  const line = document.getElementById('gaze-line');
+  const stage = document.getElementById('gaze-stage');
+  const meta = document.getElementById('gaze-meta');
+  if (!line || !stage) return;
+  line.innerHTML = gazeLine(card.text);
+  const pivot = line.querySelector('b');
+  const pivotX = pivot.offsetLeft + pivot.offsetWidth / 2;
+  line.style.transform = `translate(${stage.clientWidth / 2 - pivotX}px, -50%)`;
+  if (meta) meta.textContent = `${card.sectionTitle}　${gaze.index + 1} / ${cards.length}`;
+  const select = document.getElementById('gaze-section');
+  if (select) {
+    const match = [...select.options].find(option => gazeSections(cards).find(section => section.id === card.sectionId && String(section.index) === option.value));
+    if (match) select.value = match.value;
+  }
+}
+
+function gazeStep(dir) {
+  const cards = gazeCards();
+  if (!cards.length) return;
+  const current = cards[gaze.index];
+  let next = gaze.index + dir;
+  if (gaze.loop && current) {
+    let start = gaze.index;
+    while (start > 0 && cards[start - 1].sectionId === current.sectionId) start -= 1;
+    let end = gaze.index;
+    while (end < cards.length - 1 && cards[end + 1].sectionId === current.sectionId) end += 1;
+    if (next > end) next = start;
+    if (next < start) next = end;
+  } else if (next >= cards.length) {
+    next = 0;
+  } else if (next < 0) {
+    next = cards.length - 1;
+  }
+  gaze.index = next;
+  gazeShow();
+}
+
+function gazePlay(on) {
+  gazeClearTimer();
+  gaze.playing = on;
+  const button = document.getElementById('gaze-toggle');
+  if (button) button.textContent = on ? '止める' : '進める';
+  if (on) gaze.timer = setInterval(() => gazeStep(1), gaze.ms);
+}
+
+function bindGaze() {
+  if (!gazeCards().length) return;
+  gazeShow();
+  document.getElementById('gaze-toggle').onclick = () => gazePlay(!gaze.playing);
+  document.getElementById('gaze-prev').onclick = () => gazeStep(-1);
+  document.getElementById('gaze-next').onclick = () => gazeStep(1);
+  document.getElementById('gaze-stage').onclick = () => gazePlay(!gaze.playing);
+  document.getElementById('gaze-speed').oninput = event => {
+    gaze.ms = Number(event.target.value);
+    if (gaze.playing) gazePlay(true);
+  };
+  document.getElementById('gaze-loop').onchange = event => {
+    gaze.loop = event.target.checked;
+  };
+  document.getElementById('gaze-section').onchange = event => {
+    gaze.index = Number(event.target.value);
+    gazeShow();
+  };
+  if (gaze.playing) gazePlay(true);
+}
+
 function guide() {
   const html = window.TAKKEN_GUIDE || '';
   if (!html) {
@@ -1096,16 +1316,19 @@ function tick() {
 }
 
 function mount() {
+  gazeClearTimer();
   ensureDaily();
   const path = (location.hash.slice(1) || '/').split('?')[0];
   document.querySelector('#app').innerHTML = path === '/' ? dashboard()
     : path === '/play' ? play()
     : path === '/memory' ? memory()
     : path === '/guide' ? guide()
+    : path === '/gaze' ? gazePage()
     : path === '/stats' ? statsPage()
     : plan();
   if (path === '/play' && currentQuestion()) bindQuiz();
   if (path === '/stats') bindStats();
+  if (path === '/gaze') bindGaze();
   bindGlobal();
 }
 

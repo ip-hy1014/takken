@@ -497,6 +497,54 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
 .stat-exam label { display: block; margin: 0 0 8px; line-height: 1.6 }
 .stat-why { margin: 4px 0 0 }
 
+.gaze-main {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 150px);
+}
+.gaze-meta { text-align: center; color: var(--muted); font-size: 13px; margin: 0 }
+.gaze-stage {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+  overflow: hidden;
+}
+.gaze-tick {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 46px);
+  width: 2px;
+  height: 14px;
+  background: #c00000;
+  transform: translateX(-50%);
+}
+.gaze-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.gaze-line b { color: #c00000; font-weight: 700 }
+.gaze-controls { display: grid; gap: 12px; margin-top: 8px }
+.gaze-controls label { display: flex; align-items: center; gap: 8px; font-size: 15px }
+.gaze-controls select, .gaze-controls input[type="range"] { flex: 1; min-height: 44px; font-size: 16px }
+.gaze-buttons { display: flex; gap: 8px }
+.gaze-buttons button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+.gaze-buttons .primary { margin-top: 0 }
+.gaze-loop { min-height: 44px }
+
 .shake { animation: shake .28s linear }
 @keyframes shake {
   0%,100% { transform: translateX(0) }
@@ -531,7 +579,7 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
     justify-content: center;
     min-height: 52px;
     padding: 10px 4px 12px;
-    font-size: 12px;
+    font-size: 11px;
   }
   main { padding: 16px 14px calc(96px + env(safe-area-inset-bottom)) }
   .hero { padding: 20px 16px 18px }
