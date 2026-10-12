@@ -426,6 +426,7 @@ function header(view) {
         ['/memory', '復習', soon ? String(soon) : ''],
         ['/plan', '計画', ''],
         ['/guide', '論点', ''],
+        ['/weak', '弱点', weakRemain() ? String(weakRemain()) : ''],
         ['/gaze', '定点', ''],
         ['/stats', '統計', '']
       ].map(([p, n, badge]) => `
@@ -1284,6 +1285,81 @@ function bindGaze() {
   if (gaze.playing) gazePlay(true);
 }
 
+// ───── 弱点（9月・10月の学習記録から）─────
+const WEAK_KEY = 'takken-weak-done';
+
+function weakDone() {
+  try { return JSON.parse(localStorage.getItem(WEAK_KEY) || '{}'); } catch (_) { return {}; }
+}
+
+function weakRemain() {
+  const w = window.TAKKEN_WEAK;
+  if (!w) return 0;
+  const done = weakDone();
+  let n = 0;
+  w.tiers.forEach(t => t.groups.forEach(g => g.qs.forEach(q => { if (!done[q.t]) n += 1; })));
+  return n;
+}
+
+function weakPage() {
+  const w = window.TAKKEN_WEAK;
+  if (!w) return `${header('/weak')}<main class="wrap"><p>学習記録を読み込めませんでした。</p></main>`;
+  const done = weakDone();
+  const pct = v => `${Math.round(v * 100)}%`;
+  const areas = w.areas.map(a => `
+    <tr><td>${a.name}</td><td class="num">${a.n}問</td><td class="num">${pct(a.rate)}</td><td class="num">${a.pts}点</td></tr>
+  `).join('');
+  const tiers = w.tiers.map(t => `
+    <section class="panel">
+      <h2>${t.title}</h2>
+      <p class="small">${t.note}</p>
+      ${t.groups.map(g => {
+        const left = g.qs.filter(q => !done[q.t]).length;
+        return `
+        <div class="weak-g">
+          <div class="weak-h">
+            <b>${g.tag}</b>
+            <span class="small">${g.area}　正答率 ${pct(g.rate)}（${g.n}問）　本試験 約${g.deha}問　残り ${left}/${g.qs.length}問</span>
+          </div>
+          <div class="weak-qs">
+            ${g.qs.map(q => `
+              <label class="weak-q ${done[q.t] ? 'done' : ''}">
+                <input type="checkbox" data-weak="${q.t}" ${done[q.t] ? 'checked' : ''}/>
+                <a href="${q.u}" target="_blank" rel="noopener">${q.t}</a>
+                <span class="small">${q.d} に誤答</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </section>
+  `).join('');
+  return `${header('/weak')}
+    <main class="gaze-main">
+      <h1 class="page-title">弱点</h1>
+      <p class="small">9月と10月に解いた${w.solved}問の記録から作りました。正答率は9月が${pct(w.sep)}、10月が${pct(w.oct)}です。</p>
+      <section class="panel">
+        <h2>本試験の配点に当てた見込み</h2>
+        <table class="weak-t"><thead><tr><th>分野</th><th>出題数</th><th>10月の正答率</th><th>見込み</th></tr></thead>
+          <tbody>${areas}<tr><td><b>合計</b></td><td class="num"><b>50問</b></td><td class="num">—</td><td class="num"><b>${w.predicted}点</b></td></tr></tbody></table>
+        <p class="small">合格ラインは33点から37点です。余裕はおよそ1点しかありません。</p>
+      </section>
+      ${tiers}
+    </main>`;
+}
+
+function bindWeak() {
+  document.querySelectorAll('[data-weak]').forEach(box => {
+    box.onchange = () => {
+      const done = weakDone();
+      if (box.checked) done[box.dataset.weak] = 1; else delete done[box.dataset.weak];
+      try { localStorage.setItem(WEAK_KEY, JSON.stringify(done)); } catch (_) {}
+      box.closest('.weak-q').classList.toggle('done', box.checked);
+      mount();
+    };
+  });
+}
+
 function guide() {
   const html = window.TAKKEN_GUIDE || '';
   if (!html) {
@@ -1323,12 +1399,14 @@ function mount() {
     : path === '/play' ? play()
     : path === '/memory' ? memory()
     : path === '/guide' ? guide()
+    : path === '/weak' ? weakPage()
     : path === '/gaze' ? gazePage()
     : path === '/stats' ? statsPage()
     : plan();
   if (path === '/play' && currentQuestion()) bindQuiz();
   if (path === '/stats') bindStats();
   if (path === '/gaze') bindGaze();
+  if (path === '/weak') bindWeak();
   bindGlobal();
 }
 

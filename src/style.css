@@ -604,3 +604,16 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
   #toast.show { transform: translate(-50%, 0) }
   .guide-frame { height: calc(100dvh - 148px - env(safe-area-inset-bottom)) }
 }
+
+/* 弱点 */
+.weak-t{width:100%;border-collapse:collapse;font-size:15px;margin:8px 0}
+.weak-t th,.weak-t td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line,#ddd)}
+.weak-t .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.weak-g{margin:14px 0 0}
+.weak-h{padding-bottom:6px;border-bottom:1px solid var(--line,#ddd);margin-bottom:6px}
+.weak-h b{font-size:16px}
+.weak-h span{display:block}
+.weak-qs{display:flex;flex-direction:column;gap:2px}
+.weak-q{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:15px}
+.weak-q input{width:19px;height:19px;flex:0 0 auto}
+.weak-q.done a{opacity:.45;text-decoration:line-through}
