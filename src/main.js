@@ -1297,7 +1297,7 @@ function weakRemain() {
   if (!w) return 0;
   const done = weakDone();
   let n = 0;
-  w.tiers.forEach(t => t.groups.forEach(g => g.qs.forEach(q => { if (!done[q.t]) n += 1; })));
+  w.tiers.forEach(t => { if (t.low) return; t.groups.forEach(g => g.qs.forEach(q => { if (!done[q.t]) n += 1; })); });
   return n;
 }
 
