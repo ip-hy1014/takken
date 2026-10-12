@@ -34,7 +34,7 @@ function blankDaily(date) {
 }
 
 function loadSession() {
-  const base = { combo: 0, xp: 0, answered: 0, started: Date.now(), queue: [], revisit: [], untilRevisit: 0, lastId: null, retryId: null, showing: null, deal: null, currentId: null, advanceAt: 0 };
+  const base = { combo: 0, xp: 0, answered: 0, started: Date.now(), queue: [], revisit: [], untilRevisit: 0, lastId: null, retryId: null, showing: null, deal: null, currentId: null, advanceAt: 0, newOnly: false };
   try {
     const raw = sessionStorage.getItem(SESSION);
     if (!raw) return base;
@@ -54,7 +54,8 @@ function persistSession() {
     revisit: session.revisit,
     untilRevisit: session.untilRevisit,
     lastId: session.lastId,
-    retryId: session.retryId
+    retryId: session.retryId,
+    newOnly: session.newOnly
   }));
 }
 
@@ -240,6 +241,13 @@ function pickNext() {
   }
   if (session.untilRevisit > 0) session.untilRevisit -= 1;
   session.retryId = null;
+  // 未出題だけを出すモード。復習の行列に埋もれて新しい問題が出てこないときに使う
+  if (session.newOnly) {
+    return nextNew()
+      || dueCards().find(q => q.id !== avoid)
+      || weakest()
+      || questionById(avoid);
+  }
   return dueCards().find(q => q.id !== avoid)
     || nextNew()
     || weakest()
@@ -620,6 +628,7 @@ function play() {
           <span id="battle-today">今日 ${state.daily.answered}/${target}</span>
           <span class="combo-big ${session.combo >= 3 ? 'hot' : ''}" id="battle-combo">連続 ${session.combo}</span>
           ${ret !== null ? `<span>定着 ${ret}%</span>` : '<span>初見</span>'}
+          <button type="button" class="mode-btn ${session.newOnly ? 'on' : ''}" data-newonly>未出題だけ ${unseen().length}</button>
         </div>
       </div>
       <h1>${esc(q.q)}</h1>
@@ -846,6 +855,16 @@ function plan() {
 }
 
 function bindGlobal() {
+  document.querySelectorAll('[data-newonly]').forEach(btn => {
+    btn.onclick = () => {
+      session.newOnly = !session.newOnly;
+      session.currentId = null;
+      session.showing = null;
+      session.deal = null;
+      persistSession();
+      mount();
+    };
+  });
   document.querySelectorAll('[data-sound]').forEach(btn => {
     btn.onclick = () => {
       state.settings.sound = !state.settings.sound;

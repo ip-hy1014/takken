@@ -617,3 +617,8 @@ main { max-width: 760px; margin: auto; padding: 28px 20px 80px }
 .weak-q{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:15px}
 .weak-q input{width:19px;height:19px;flex:0 0 auto}
 .weak-q.done a{opacity:.45;text-decoration:line-through}
+
+/* 未出題だけモード */
+.mode-btn{font-family:inherit;font-size:13px;padding:3px 10px;border:1px solid currentColor;
+background:transparent;color:inherit;border-radius:3px;cursor:pointer;opacity:.75}
+.mode-btn.on{background:#c00;color:#fff;border-color:#c00;opacity:1}
