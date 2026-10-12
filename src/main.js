@@ -182,9 +182,9 @@ function dailyTarget() {
   return Math.max(10, Math.min(16, Math.ceil(unseen().length / left) + 6));
 }
 
-function nextNew() {
+function nextNew(ok) {
   const phase = currentPhase();
-  return unseen().slice().sort((a, b) => {
+  return unseen().filter(q => !ok || ok(q)).slice().sort((a, b) => {
     const af = phase.focus.includes(a.area) ? 3 : 1;
     const bf = phase.focus.includes(b.area) ? 3 : 1;
     const aw = (AREA_WEIGHT[a.area] / 20) * a.y * af * (1.2 - areaMastery(a.area));
@@ -193,8 +193,8 @@ function nextNew() {
   })[0] || null;
 }
 
-function weakest() {
-  return QUESTIONS.filter(q => cardOf(q.id)).sort((a, b) => {
+function weakest(ok) {
+  return QUESTIONS.filter(q => cardOf(q.id) && (!ok || ok(q))).sort((a, b) => {
     const ca = cardOf(a.id);
     const cb = cardOf(b.id);
     return (retentionOf(ca) - ca.lapses * 0.08) - (retentionOf(cb) - cb.lapses * 0.08);
@@ -220,11 +220,28 @@ function currentQuestion() {
   }
   if (session.currentId) {
     const current = questionById(session.currentId);
-    if (current) return current;
+    if (current && matchFind(current, activeFind())) return current;
+    session.currentId = null;
   }
   const q = pickNext();
   session.currentId = q ? q.id : null;
   return q;
+}
+
+// ───── 絞り込み（#/play?find=区画整理）─────
+// タグが1問ごとのラベルになっていて分類に使えないため、語で絞る。
+// 解説まで含めると広く当たりすぎるので、タグと問題文だけを見る。
+function activeFind() {
+  return (new URLSearchParams(location.hash.split('?')[1] || '').get('find') || '').trim();
+}
+
+function matchFind(q, word) {
+  if (!word) return true;
+  return (String(q.tag || '') + String(q.q || '')).includes(word);
+}
+
+function findPool(word) {
+  return QUESTIONS.filter(q => matchFind(q, word));
 }
 
 function pickNext() {
@@ -241,17 +258,21 @@ function pickNext() {
   }
   if (session.untilRevisit > 0) session.untilRevisit -= 1;
   session.retryId = null;
+  const word = activeFind();
+  const ok = q => matchFind(q, word);
   // 未出題だけを出すモード。復習の行列に埋もれて新しい問題が出てこないときに使う
   if (session.newOnly) {
-    return nextNew()
-      || dueCards().find(q => q.id !== avoid)
-      || weakest()
-      || questionById(avoid);
+    return nextNew(ok)
+      || dueCards().find(q => ok(q) && q.id !== avoid)
+      || weakest(ok)
+      || findPool(word)[0]
+      || null;
   }
-  return dueCards().find(q => q.id !== avoid)
-    || nextNew()
-    || weakest()
-    || questionById(avoid);
+  return dueCards().find(q => ok(q) && q.id !== avoid)
+    || nextNew(ok)
+    || weakest(ok)
+    || findPool(word)[0]
+    || null;
 }
 
 function deal(q) {
@@ -435,6 +456,7 @@ function header(view) {
         ['/plan', '計画', ''],
         ['/guide', '論点', ''],
         ['/weak', '弱点', weakRemain() ? String(weakRemain()) : ''],
+        ['/drill', '絞る', ''],
         ['/gaze', '定点', ''],
         ['/stats', '統計', '']
       ].map(([p, n, badge]) => `
@@ -621,6 +643,7 @@ function play() {
   return `${header('/play')}
     <main class="quiz-wrap ${shown && !shown.ok ? 'shake' : ''}">
       ${dueChip()}
+      ${activeFind() ? `<p class="find-chip">「${esc(activeFind())}」だけを出しています（${findPool(activeFind()).length}問）<a href="#/play">やめる</a></p>` : ''}
       <div class="battle-top">
         <p class="eyebrow">${overtime() ? '経験値2倍 · ' : ''}${kind} · ${esc(q.area)} / ${esc(q.tag)}</p>
         <div class="heat"><s style="width:${heat}%"></s></div>
@@ -1320,6 +1343,57 @@ function weakRemain() {
   return n;
 }
 
+// ───── 絞って解く ─────
+const DRILL = [
+  ['宅建業法', ['免許','取引士','営業保証金','保証協会','媒介','35条','37条','8種','クーリング','手付','報酬','広告','監督処分','帳簿','従業者','案内所']],
+  ['法令上の制限', ['都市計画','開発許可','用途地域','建蔽率','容積率','建築基準','斜線','防火地域','農地','事後届出','区画整理','造成','盛土']],
+  ['権利関係', ['意思表示','代理','時効','抵当権','賃貸借','借地','借家','区分所有','登記','相続','売買','不法行為','連帯債務','保証','債権譲渡']],
+  ['税・その他', ['不動産取得税','固定資産税','印紙税','登録免許税','所得税','鑑定','地価公示','機構','景品','統計','土地','建物']]
+];
+
+function drillStat(word) {
+  const pool = findPool(word);
+  const seen = pool.filter(q => cardOf(q.id));
+  const ret = seen.length
+    ? Math.round(seen.reduce((a, q) => a + retentionOf(cardOf(q.id)), 0) / seen.length * 100)
+    : null;
+  return { n: pool.length, seen: seen.length, ret };
+}
+
+function drillPage() {
+  const blocks = DRILL.map(([area, words]) => {
+    const rows = words.map(w => {
+      const s = drillStat(w);
+      if (!s.n) return '';
+      return `<a class="drill-row" href="#/play?find=${encodeURIComponent(w)}">
+        <b>${esc(w)}</b>
+        <span>${s.n}問　学習済み ${s.seen}${s.ret !== null ? `　定着 ${s.ret}%` : ''}</span>
+      </a>`;
+    }).join('');
+    return `<section class="panel"><h2>${esc(area)}</h2><div class="drill-list">${rows}</div></section>`;
+  }).join('');
+  return `${header('/drill')}
+    <main class="gaze-main">
+      <h1 class="page-title">絞って解く</h1>
+      <p class="small">語で絞って、その範囲だけを出します。タグが1問ごとのラベルなので、分類ではなく語で探します。問題文とタグだけを見るため、解説にしか出てこない語は拾いません。</p>
+      <form class="drill-find" id="drill-form">
+        <input id="drill-word" type="search" placeholder="自分で語を入れる（例：仮換地）" enterkeyhint="go"/>
+        <button class="primary" type="submit">この語で解く</button>
+      </form>
+      ${blocks}
+    </main>`;
+}
+
+function bindDrill() {
+  const form = document.getElementById('drill-form');
+  if (!form) return;
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const w = document.getElementById('drill-word').value.trim();
+    if (w) location.hash = '#/play?find=' + encodeURIComponent(w);
+  };
+}
+
 function weakPage() {
   const w = window.TAKKEN_WEAK;
   if (!w) return `${header('/weak')}<main class="wrap"><p>学習記録を読み込めませんでした。</p></main>`;
@@ -1419,6 +1493,7 @@ function mount() {
     : path === '/memory' ? memory()
     : path === '/guide' ? guide()
     : path === '/weak' ? weakPage()
+    : path === '/drill' ? drillPage()
     : path === '/gaze' ? gazePage()
     : path === '/stats' ? statsPage()
     : plan();
@@ -1426,6 +1501,7 @@ function mount() {
   if (path === '/stats') bindStats();
   if (path === '/gaze') bindGaze();
   if (path === '/weak') bindWeak();
+  if (path === '/drill') bindDrill();
   bindGlobal();
 }
 
