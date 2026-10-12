@@ -741,12 +741,11 @@ function goNext(fromClick) {
   session.deal = null;
   session.revealed = null;
   session.currentId = null;
-  if ((location.hash.split('?')[0] || '') !== '#/play') {
-    location.hash = '#/play';
-    return;
-  }
-  if (location.hash.includes('?')) {
-    location.hash = '#/play';
+  // ?id= の1問指定だけを外し、?find= の絞り込みは次の問題にも引き継ぐ
+  const word = activeFind();
+  const want = '#/play' + (word ? '?find=' + encodeURIComponent(word) : '');
+  if (location.hash !== want) {
+    location.hash = want;
     return;
   }
   mount();
